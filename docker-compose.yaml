@@ -1,0 +1,98 @@
+version: '3.7'
+
+services:
+  #nuxt:
+  #  build:
+  #    context: ./frontend
+  #    dockerfile: ./Dockerfile
+  #  container_name: nuxt
+  #  ports:
+  #    - '${NUXT_PORT}:3000'
+  #    - '24678:24678'
+  #  volumes:
+  #    - ./frontend:/nuxt
+  #  command: 'npm run installDev'
+
+  php-fpm:
+    build:
+      context: ./php-fpm
+      dockerfile: ./Dockerfile
+    container_name: php-fpm
+    ports:
+      - ${PHP_PORT}:80
+    volumes:
+      - ./www:/laravel
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    depends_on:
+      - postgres
+    restart: always
+
+  postgres:
+    container_name: postgres
+    build:
+      context: ./sql
+      dockerfile: ./Dockerfile
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_ROOT_PASSWORD: ${POSTGRES_ROOT_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: postgres
+    volumes:
+      - ./sql/db:/var/lib/postgresql/data
+    restart: always
+
+  phppgadmin:
+    image: dpage/pgadmin4
+    container_name: phppgadmin
+    ports:
+      - ${PHP_PG_ADMIN_PORT}:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_LISTEN_PORT: ${PGADMIN_LISTEN_PORT}
+    volumes:
+      - ./sql/configs/servers.json:/pgadmin4/servers.json
+    depends_on:
+      - postgres
+    restart: always
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: ./Dockerfile
+    container_name: nginx
+    ports:
+      - ${HOST_PORT}:80
+    volumes:
+      - ./www:/laravel
+      - ./nginx/configs/:/etc/nginx/conf.d/
+      - ./nginx/logs:/var/log/nginx/
+    environment:
+      VIRTUAL_HOST: ${GLOBAL_DOMAIN}
+      GLOBAL_DOMAIN: ${GLOBAL_DOMAIN}
+      SERVER_PORT: ${SERVER_PORT}
+      MAX_BUF_SIZE: ${MAX_BUF_SIZE}
+      MAX_BODY_SIZE: ${MAX_BODY_SIZE}
+    depends_on:
+      - php-fpm
+    restart: always
+
+  node:
+    container_name: node-laravel
+    build:
+      context: ./node
+    entrypoint: /bin/sh
+    working_dir: /var/www/laravel
+    tty: true
+
+networks:
+  default:
+
+volumes:
+  default: {}

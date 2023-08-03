@@ -1,0 +1,26 @@
+version: '3.7'
+
+services:
+  nuxt:
+    build:
+      context: ./frontend
+      dockerfile: ./prod.Dockerfile
+    container_name: nuxt
+    restart: always
+    ports:
+      - '3000:3000'
+
+  nginx:
+    build: ./nginx
+    ports:
+      - '${HOST_PORT}:80'
+    volumes:
+        - ./nginx/configs:/etc/nginx/conf.d
+    depends_on:
+      - nuxt
+
+networks:
+  default:
+
+volumes:
+  default: {}
